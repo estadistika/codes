@@ -54,7 +54,6 @@ renamecol(flights, :tailnum, :tail_num)
 """
 Add new column with `insetcol`, `insertcolafter`, `insertcolbefore`, and @transform
 """
-# insert 
 
 gain = map(x -> x.arr_delay - x.dep_delay, flights, select = (:arr_delay, :dep_delay));
 speed = map(x -> x.distance / x.air_time * 60, flights, select = (:distance, :air_time));
@@ -91,7 +90,6 @@ delay = @groupby flights :tailnum {
     delay = mean(dropna(:arr_delay))
 }
 
-
 delay = filter((:count => x -> x .> 20, :dist => x -> x .< 2000), delay)
 
 using Gadfly
@@ -118,7 +116,6 @@ p = plot(
 
 # dimension in golden ratio
 draw(PNG("2018-6-8-p1.png", 7.28115inch, 4.5inch), p)
-
 
 destinations = groupby(
     @NT(
@@ -166,5 +163,3 @@ select(flights, 1)
     }
     @filter :arr .> 30 || :dep .> 30
 end
-
-
