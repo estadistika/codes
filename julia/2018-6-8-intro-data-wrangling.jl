@@ -149,7 +149,7 @@ per_year = groupby(
     select(per_month, Not(:month)), 
     group[1]
 )
-
+ 
 """
 Selecting operation
 """
@@ -163,3 +163,7 @@ select(flights, 1)
     }
     @filter :arr .> 30 || :dep .> 30
 end
+
+@time 
+nycflights = loadtable(down_dir);
+save(nycflights, joinpath(homedir(), "Downloads", "d"))
