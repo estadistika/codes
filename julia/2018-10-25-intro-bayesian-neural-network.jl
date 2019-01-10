@@ -1,3 +1,63 @@
+using Turing, Flux, Plots, Random
+# Number of points to generate.
+N = 80
+M = round(Int, N / 4)
+Random.seed!(1234)
+
+# Generate artificial data.
+x1s = rand(M) * 4.5; x2s = rand(M) * 4.5; 
+xt1s = Array([[x1s[i] + 0.5; x2s[i] + 0.5] for i = 1:M])
+x1s = rand(M) * 4.5; x2s = rand(M) * 4.5; 
+append!(xt1s, Array([[x1s[i] - 5; x2s[i] - 5] for i = 1:M]))
+
+x1s = rand(M) * 4.5; x2s = rand(M) * 4.5; 
+xt0s = Array([[x1s[i] + 0.5; x2s[i] - 5] for i = 1:M])
+x1s = rand(M) * 4.5; x2s = rand(M) * 4.5; 
+append!(xt0s, Array([[x1s[i] - 5; x2s[i] + 0.5] for i = 1:M]))
+
+# Store all the data for later.
+xs = [xt1s; xt0s]
+ts = [ones(2*M); zeros(2*M)]
+
+# Plot data points.
+function plot_data()
+    x1 = map(e -> e[1], xt1s)
+    y1 = map(e -> e[2], xt1s)
+    x2 = map(e -> e[1], xt0s)
+    y2 = map(e -> e[2], xt0s)
+
+    Plots.scatter(x1,y1, color="red")
+    Plots.scatter!(x2, y2, color="blue")
+end
+
+plot_data()
+
+
+# Turn a vector into a set of weights and biases.
+function unpack(nn_params::AbstractVector)
+    W₁ = reshape(nn_params[1:6], 3, 2);   
+    b₁ = reshape(nn_params[7:9], 3)
+    
+    W₂ = reshape(nn_params[10:15], 2, 3); 
+    b₂ = reshape(nn_params[16:17], 2)
+    
+    Wₒ = reshape(nn_params[18:19], 1, 2); 
+    bₒ = reshape(nn_params[20:20], 1)   
+    return W₁, b₁, W₂, b₂, Wₒ, bₒ
+end
+
+# Construct a neural network using Flux and return a predicted value.
+function nn_forward(xs, nn_params::AbstractVector)
+    W₁, b₁, W₂, b₂, Wₒ, bₒ = unpack(nn_params)
+    nn = Chain(Dense(W₁, b₁, tanh),
+               Dense(W₂, b₂, tanh),
+               Dense(Wₒ, bₒ, σ))
+    return nn(xs)
+end;
+
+
+
+#################
 using Flux
 using RDatasets
 using Measures
@@ -32,7 +92,7 @@ function feedforward(inp::Array{Float64, 2}, theta::AbstractVector)
         Dense(W0, b0, tanh),
         Dense(W1, b1, tanh),
         Dense(W2, b2, σ),
-        softmax
+        x -> softmax(x)
     )
 
     return model(inp)
@@ -71,17 +131,18 @@ Y = onehotbatch(labels, 0:2);
 m = Chain(
     Dense(4, 5, σ),
     Dense(5, 3, σ),
-    softmax
+    x -> softmax(x)
 )
 
 loss(x, y) = crossentropy(m(x), y)
 accuracy(x, y) = mean(onecold(m(x)) .== onecold(y))
 
-data = repeated((X, Y), 2000)
+data = repeated((X, Y), 200_000)
 evalcb = () -> @show(loss(X, Y))
-opt = [ADAM(params(m)), SGD(params(m))]
+# opt = [ADAM(params(m)), SGD(params(m))]
+opt = ADAM(params(m))
 
-Flux.train!(loss, data, opt, cb = throttle(evalcb, 10))
+Flux.train!(loss, data, opt, cb = throttle(evalcb, 1))
 
 
 ##########
@@ -91,10 +152,10 @@ using Base.Iterators: repeated
 
 imgs = MNIST.images()
 # Stack images into one large batch
-X = hcat(float.(reshape.(imgs, :))...)
+X1 = hcat(float.(reshape.(imgs, :))...)
 
 labels = MNIST.labels()
-Y = onehotbatch(labels, 0:9)
+Y1 = onehotbatch(labels, 0:9)
 
 m = Chain(
     Dense(28^2, 32, relu),
@@ -106,11 +167,11 @@ loss(x, y) = crossentropy(m(x), y)
   
 accuracy(x, y) = mean(onecold(m(x)) .== onecold(y))
 
-data = repeated((X, Y), 200)
-evalcb = () -> @show(loss(X, Y))
+data1 = repeated((X1, Y1), 10)
+evalcb = () -> @show(loss(X1, Y1))
 opt = ADAM(params(m))
 
-Flux.train!(loss, data, opt, cb = throttle(evalcb, 10))
+Flux.train!(loss, data1, opt, cb = throttle(evalcb, 1))
 
 # W0, b0, W1, b1, W2, b2 = weights(reshape(theta, 63))
 # preds = feedforward(Array(inputs'), reshape(theta, 63))
